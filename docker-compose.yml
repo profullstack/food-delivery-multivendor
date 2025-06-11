@@ -1,0 +1,149 @@
+version: '3.8'
+
+services:
+  # MongoDB Replica Set
+  mongo1:
+    image: mongo:6.0
+    container_name: enatega-mongo1
+    command: mongod --replSet rs0 --bind_ip_all --port 27017
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo1_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - enatega-network
+
+  mongo2:
+    image: mongo:6.0
+    container_name: enatega-mongo2
+    command: mongod --replSet rs0 --bind_ip_all --port 27017
+    ports:
+      - "27021:27017"
+    volumes:
+      - mongo2_data:/data/db
+    networks:
+      - enatega-network
+
+  mongo3:
+    image: mongo:6.0
+    container_name: enatega-mongo3
+    command: mongod --replSet rs0 --bind_ip_all --port 27017
+    ports:
+      - "27022:27017"
+    volumes:
+      - mongo3_data:/data/db
+    networks:
+      - enatega-network
+
+  # Redis for GraphQL subscriptions
+  redis:
+    image: redis:7-alpine
+    container_name: enatega-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - enatega-network
+    command: redis-server --appendonly yes
+
+  # Enatega Backend API
+  enatega-backend:
+    build:
+      context: ./enatega-multivendor-backend
+      dockerfile: Dockerfile
+    container_name: enatega-backend
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      MONGODB_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/enatega-multivendor?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-for-production}
+      JWT_EXPIRES_IN: 7d
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      AGE_VERIFICATION_ENABLED: true
+      MINIMUM_AGE_TOBACCO: 21
+      MINIMUM_AGE_ALCOHOL: 21
+      VERIFICATION_EXPIRY_MONTHS: 24
+      MAX_UPLOAD_SIZE_MB: 5
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3001,http://localhost:3002
+      GRAPHQL_PLAYGROUND: true
+      GRAPHQL_INTROSPECTION: true
+    volumes:
+      - ./enatega-multivendor-backend/uploads:/app/uploads
+      - ./enatega-multivendor-backend/logs:/app/logs
+    networks:
+      - enatega-network
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MongoDB Replica Set Initialization
+  mongo-setup:
+    image: mongo:6.0
+    container_name: enatega-mongo-setup
+    networks:
+      - enatega-network
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    volumes:
+      - ./scripts/setup-replica-set.js:/setup-replica-set.js:ro
+    command: >
+      bash -c "
+        sleep 10 &&
+        mongosh --host mongo1:27017 --file /setup-replica-set.js
+      "
+    restart: "no"
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: enatega-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - enatega-network
+    depends_on:
+      - enatega-backend
+    restart: unless-stopped
+
+volumes:
+  mongo1_data:
+    driver: local
+  mongo2_data:
+    driver: local
+  mongo3_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  enatega-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

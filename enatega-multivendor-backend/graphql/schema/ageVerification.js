@@ -1,6 +1,4 @@
-const { gql } = require('apollo-server-express')
-
-const ageVerificationTypeDefs = gql`
+const ageVerificationTypeDefs = `
   enum AgeVerificationStatus {
     PENDING
     VERIFIED
@@ -18,10 +16,10 @@ const ageVerificationTypeDefs = gql`
     _id: ID!
     url: String!
     thumbnailUrl: String
-    uploadedAt: Date!
+    uploadedAt: String!
     status: AgeVerificationStatus!
-    verifiedAt: Date
-    expiryDate: Date
+    verifiedAt: String
+    expiryDate: String
     rejectionReason: String
     documentType: String!
     fileSize: Int!
@@ -34,9 +32,9 @@ const ageVerificationTypeDefs = gql`
     status: AgeVerificationStatus!
     document: AgeVerificationDocument
     canPurchaseRestricted: Boolean!
-    restrictedItemTypes: [RestrictedItemType!]!
-    verificationExpiryDate: Date
-    dateOfBirth: Date
+    restrictedItemTypes: String
+    verificationExpiryDate: String
+    dateOfBirth: String
     age: Int
   }
 
@@ -56,7 +54,7 @@ const ageVerificationTypeDefs = gql`
     _id: ID!
     user: User!
     document: AgeVerificationDocument!
-    submittedAt: Date!
+    submittedAt: String!
     priority: Int!
   }
 
@@ -73,13 +71,13 @@ const ageVerificationTypeDefs = gql`
 
   extend type Query {
     getAgeVerificationStatus: AgeVerificationInfo
-    getAgeVerificationReviews(limit: Int = 20, offset: Int = 0): [AgeVerificationReview!]!
+    getAgeVerificationReviews(limit: Int, offset: Int): String
     canPurchaseRestrictedItem(itemType: RestrictedItemType!): Boolean!
   }
 
   extend type Mutation {
     uploadAgeVerificationDocument(
-      file: Upload!
+      file: String!
       input: AgeVerificationUploadInput!
     ): AgeVerificationUploadResponse!
     

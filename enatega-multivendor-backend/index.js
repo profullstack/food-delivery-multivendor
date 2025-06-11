@@ -3,7 +3,7 @@ const { ApolloServer } = require('apollo-server-express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const helmet = require('helmet')
-const { graphqlUploadExpress } = require('graphql-upload')
+// const { graphqlUploadExpress } = require('graphql-upload')
 require('dotenv').config()
 
 // Import GraphQL schema and resolvers
@@ -41,8 +41,8 @@ app.use(cors(corsOptions))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// GraphQL file upload middleware
-app.use('/graphql', graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }))
+// GraphQL file upload middleware (disabled for now)
+// app.use('/graphql', graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }))
 
 // Basic health check endpoint
 app.get('/health', (req, res) => {
@@ -89,6 +89,15 @@ const getUser = async (req) => {
 const typeDefs = `
   scalar Upload
   scalar Date
+
+  type User {
+    _id: ID!
+    name: String!
+    email: String!
+    phone: String
+    avatar: String
+    createdAt: Date!
+  }
 
   type Query {
     _empty: String
@@ -175,13 +184,9 @@ const connectDB = async () => {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/enatega-multivendor'
     
     await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      bufferCommands: false,
-      bufferMaxEntries: 0
+      socketTimeoutMS: 45000
     })
     
     console.log('✅ MongoDB connected successfully')
