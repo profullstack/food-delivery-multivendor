@@ -4,7 +4,7 @@ services:
   # MongoDB Replica Set
   mongo1:
     image: mongo:6.0
-    container_name: enatega-mongo1
+    container_name: cigarunderground-mongo1
     command: mongod --replSet rs0 --bind_ip_all --port 27017
     ports:
       - "27020:27017"
@@ -12,55 +12,55 @@ services:
       - mongo1_data:/data/db
       - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
-      - enatega-network
+      - cigarunderground-network
 
   mongo2:
     image: mongo:6.0
-    container_name: enatega-mongo2
+    container_name: cigarunderground-mongo2
     command: mongod --replSet rs0 --bind_ip_all --port 27017
     ports:
       - "27021:27017"
     volumes:
       - mongo2_data:/data/db
     networks:
-      - enatega-network
+      - cigarunderground-network
 
   mongo3:
     image: mongo:6.0
-    container_name: enatega-mongo3
+    container_name: cigarunderground-mongo3
     command: mongod --replSet rs0 --bind_ip_all --port 27017
     ports:
       - "27022:27017"
     volumes:
       - mongo3_data:/data/db
     networks:
-      - enatega-network
+      - cigarunderground-network
 
   # Redis for GraphQL subscriptions
   redis:
     image: redis:7-alpine
-    container_name: enatega-redis
+    container_name: cigarunderground-redis
     ports:
       - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
-      - enatega-network
+      - cigarunderground-network
     command: redis-server --appendonly yes
 
-  # Enatega Backend API
-  enatega-backend:
+  # CigarUnderground Backend API
+  cigarunderground-backend:
     build:
       context: ./enatega-multivendor-backend
       dockerfile: Dockerfile
-    container_name: enatega-backend
+    container_name: cigarunderground-backend
     ports:
       - "4000:4000"
     environment:
       NODE_ENV: production
       PORT: 4000
       HOST: 0.0.0.0
-      MONGODB_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/enatega-multivendor?replicaSet=rs0
+      MONGODB_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/cigarunderground?replicaSet=rs0
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-for-production}
       JWT_EXPIRES_IN: 7d
@@ -82,7 +82,7 @@ services:
       - ./enatega-multivendor-backend/uploads:/app/uploads
       - ./enatega-multivendor-backend/logs:/app/logs
     networks:
-      - enatega-network
+      - cigarunderground-network
     depends_on:
       - mongo1
       - mongo2
@@ -99,9 +99,9 @@ services:
   # MongoDB Replica Set Initialization
   mongo-setup:
     image: mongo:6.0
-    container_name: enatega-mongo-setup
+    container_name: cigarunderground-mongo-setup
     networks:
-      - enatega-network
+      - cigarunderground-network
     depends_on:
       - mongo1
       - mongo2
@@ -115,10 +115,10 @@ services:
       "
     restart: "no"
 
-  # Nginx Reverse Proxy (Optional)
+  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: enatega-nginx
+    container_name: cigarunderground-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -126,9 +126,9 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
-      - enatega-network
+      - cigarunderground-network
     depends_on:
-      - enatega-backend
+      - cigarunderground-backend
     restart: unless-stopped
 
 volumes:
@@ -142,7 +142,7 @@ volumes:
     driver: local
 
 networks:
-  enatega-network:
+  cigarunderground-network:
     driver: bridge
     ipam:
       config:

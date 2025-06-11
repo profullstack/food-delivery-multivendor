@@ -3,22 +3,22 @@
 
 print('Starting MongoDB initialization...');
 
-// Switch to the enatega-multivendor database
-db = db.getSiblingDB('enatega-multivendor');
+// Switch to the cigarunderground database
+db = db.getSiblingDB('cigarunderground');
 
 // Create application user with read/write permissions
 db.createUser({
-  user: 'enatega_user',
-  pwd: 'enatega_password_2024',
+  user: 'cigarunderground_user',
+  pwd: 'cigarunderground_password_2024',
   roles: [
     {
       role: 'readWrite',
-      db: 'enatega-multivendor'
+      db: 'cigarunderground'
     }
   ]
 });
 
-print('Created application user: enatega_user');
+print('Created application user: cigarunderground_user');
 
 // Create collections with validation schemas
 print('Creating collections with validation...');
