@@ -86,9 +86,9 @@ start_docker_services() {
     
     print_success "Docker services started successfully!"
     print_status "Services available at:"
-    echo "  - Main site: http://localhost:10700"
+    echo "  - Main site (Nginx): http://localhost:10700"
     echo "  - Admin Panel: http://localhost:10701"
-    echo "  - API Backend: http://localhost:10702"
+    echo "  - Backend API: http://localhost:10702"
 }
 
 # Function to start development services with pnpm
@@ -140,8 +140,8 @@ start_dev_services() {
     
     print_success "Development services started successfully!"
     print_status "Services available at:"
-    echo "  - Admin Panel: http://localhost:10701"
-    echo "  - API Backend: http://localhost:10702"
+    echo "  - Admin Panel (dev): http://localhost:10701"
+    echo "  - Backend API (dev): http://localhost:10702"
     echo ""
     print_warning "To stop development services, run: ./bin/startup --stop-dev"
 }
