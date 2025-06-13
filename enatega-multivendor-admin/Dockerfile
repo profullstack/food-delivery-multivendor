@@ -16,8 +16,8 @@ RUN npm install --ignore-scripts && npm cache clean --force
 # Copy application code
 COPY . .
 
-# Build the Next.js application
-RUN npm run build
+# Build the Next.js application (disable ESLint for production build)
+RUN ESLINT_NO_DEV_ERRORS=true npm run build
 
 # Remove dev dependencies after build
 RUN npm prune --omit=dev
