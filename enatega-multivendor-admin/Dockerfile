@@ -10,7 +10,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies as root first
+# Install dependencies
 RUN npm install --only=production && npm cache clean --force
 
 # Copy application code
@@ -18,16 +18,6 @@ COPY . .
 
 # Build the Next.js application
 RUN npm run build
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-
-# Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
-
-# Switch to non-root user
-USER nextjs
 
 # Expose port
 EXPOSE 3000
