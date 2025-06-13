@@ -96,6 +96,31 @@ services:
       retries: 3
       start_period: 40s
 
+  # CigarUnderground Admin Panel
+  cigarunderground-admin:
+    build:
+      context: ./enatega-multivendor-admin
+      dockerfile: Dockerfile
+    container_name: cigarunderground-admin
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_GRAPHQL_URL: http://cigarunderground-backend:4000/graphql
+      NEXT_PUBLIC_GRAPHQL_WS_URL: ws://cigarunderground-backend:4000/graphql
+      NEXT_PUBLIC_API_URL: http://cigarunderground-backend:4000
+    networks:
+      - cigarunderground-network
+    depends_on:
+      - cigarunderground-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # MongoDB Replica Set Initialization
   mongo-setup:
     image: mongo:6.0
@@ -129,6 +154,7 @@ services:
       - cigarunderground-network
     depends_on:
       - cigarunderground-backend
+      - cigarunderground-admin
     restart: unless-stopped
 
 volumes:
