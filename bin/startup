@@ -93,6 +93,12 @@ start_docker_services() {
     echo "  - Main site: https://cigarunderground.org"
     echo "  - Admin Panel: https://admin.cigarunderground.org"
     echo "  - Backend API: https://api.cigarunderground.org"
+    echo ""
+    print_status "To check if services are responding:"
+    echo "  curl -I http://localhost:10701  # Admin Panel"
+    echo "  curl -I http://localhost:10702  # Backend API"
+    echo "  docker compose ps              # Container status"
+    echo "  docker compose logs [service]  # View logs"
 }
 
 # Function to start development services with pnpm
