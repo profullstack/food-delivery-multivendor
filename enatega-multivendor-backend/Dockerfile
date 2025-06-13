@@ -16,25 +16,27 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev
 
-# Create non-root user for security (do this early)
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies as root first
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application code
+COPY . .
+
+# Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Set working directory and change ownership
-WORKDIR /app
-RUN chown nodejs:nodejs /app
+# Change ownership of the app directory (only files we need)
+RUN chown -R nodejs:nodejs /app
 
-# Switch to nodejs user for dependency installation
+# Switch to non-root user
 USER nodejs
-
-# Copy package files with correct ownership
-COPY --chown=nodejs:nodejs package*.json ./
-
-# Install dependencies as nodejs user
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy application code with correct ownership
-COPY --chown=nodejs:nodejs . .
 
 # Expose port
 EXPOSE 4000
