@@ -355,6 +355,61 @@ show_final_status() {
     echo "  - Backend API: https://api.cigarunderground.org"
 }
 
+# Function to diagnose current setup issues
+diagnose_setup() {
+    print_status "=== SETUP DIAGNOSIS ==="
+    
+    # Check if web app exists but isn't containerized
+    if [ -d "enatega-multivendor-web" ]; then
+        print_warning "Found enatega-multivendor-web directory but no Dockerfile!"
+        print_status "The actual food delivery web app exists but isn't being served"
+        print_status "Currently serving placeholder from nginx/html/index.html"
+        
+        # Check if it has package.json
+        if [ -f "enatega-multivendor-web/package.json" ]; then
+            print_status "Web app appears to be a Next.js application"
+        fi
+    fi
+    
+    # Check docker-compose for web service
+    if grep -q "cigarunderground-web:" docker-compose.yml; then
+        print_status "Found cigarunderground-web service in docker-compose.yml"
+        if grep -A 5 "cigarunderground-web:" docker-compose.yml | grep -q "build:"; then
+            print_success "Web service has build configuration"
+        else
+            print_warning "Web service uses nginx image, not building actual web app"
+        fi
+    else
+        print_error "No cigarunderground-web service found in docker-compose.yml"
+    fi
+    
+    # Check backend health
+    print_status "Checking backend container health..."
+    if docker compose ps 2>/dev/null | grep -q "cigarunderground-backend.*healthy"; then
+        print_success "Backend container is healthy"
+    elif docker compose ps 2>/dev/null | grep -q "cigarunderground-backend.*unhealthy"; then
+        print_error "Backend container is unhealthy"
+        print_status "Backend logs:"
+        docker compose logs --tail=10 cigarunderground-backend 2>/dev/null || echo "  No logs available"
+    elif docker compose ps 2>/dev/null | grep -q "cigarunderground-backend"; then
+        print_warning "Backend container exists but health status unknown"
+    else
+        print_warning "Backend container not found or not running"
+    fi
+    
+    # Check what's actually running
+    print_status "Current container status:"
+    docker compose ps 2>/dev/null || echo "  No containers running"
+    
+    echo ""
+    print_status "=== RECOMMENDATIONS ==="
+    echo "1. Create Dockerfile for enatega-multivendor-web to build the Next.js app"
+    echo "2. Update docker-compose.yml to build and serve the actual web app instead of static nginx"
+    echo "3. Fix backend health issues if any exist"
+    echo "4. The current setup serves a placeholder landing page instead of the food delivery app"
+    echo "5. API issues may be due to backend container health problems"
+}
+
 # Main execution
 main() {
     print_status "CigarUnderground Test Script Starting..."
@@ -409,4 +464,8 @@ main() {
 
 # Parse arguments and run main function
 parse_args "$@"
+
+# Always run diagnosis first
+diagnose_setup
+
 main
