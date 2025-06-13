@@ -1,33 +1,43 @@
-const express = require('express')
-const { ApolloServer } = require('@apollo/server')
-const { expressMiddleware } = require('@apollo/server/express4')
-const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/drainHttpServer')
-const { makeExecutableSchema } = require('@graphql-tools/schema')
-const { WebSocketServer } = require('ws')
-const { useServer } = require('graphql-ws/lib/use/ws')
-const http = require('http')
-const mongoose = require('mongoose')
-const cors = require('cors')
-const helmet = require('helmet')
-// const { graphqlUploadExpress } = require('graphql-upload')
-require('dotenv').config()
+import express from 'express'
+import { ApolloServer } from '@apollo/server'
+import { expressMiddleware } from '@apollo/server/express4'
+import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { WebSocketServer } from 'ws'
+import { useServer } from 'graphql-ws/lib/use/ws'
+import http from 'http'
+import mongoose from 'mongoose'
+import cors from 'cors'
+import helmet from 'helmet'
+import dotenv from 'dotenv'
+
+// Configure environment variables
+dotenv.config()
 
 // Import GraphQL schema and resolvers
-const ageVerificationSchema = require('./graphql/schema/ageVerification')
-const ageVerificationResolvers = require('./graphql/resolvers/ageVerification')
+import ageVerificationSchema from './graphql/schema/ageVerification.js'
+import ageVerificationResolvers from './graphql/resolvers/ageVerification.js'
 
 // Import middleware
-const { ageVerificationMiddleware } = require('./middleware/ageVerification')
+import { ageVerificationMiddleware } from './middleware/ageVerification.js'
 
 // Import helpers
-const { pubsub } = require('./helpers/pubsub')
+import { pubsub } from './helpers/pubsub.js'
 
 // Import models to ensure they're registered
-require('./models/user')
-require('./models/food')
-require('./models/ageVerification')
+import './models/user.js'
+import './models/food.js'
+import './models/ageVerification.js'
 
 const app = express()
+
+// Global application state
+const appState = {
+  isReady: false,
+  dbConnected: false,
+  serverStarted: false,
+  startupErrors: []
+}
 
 // Security middleware
 app.use(helmet({
@@ -47,30 +57,127 @@ app.use(cors(corsOptions))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// GraphQL file upload middleware (disabled for now)
-// app.use('/graphql', graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }))
-
-// Basic health check endpoint
+// Enhanced health check endpoint with database status
 app.get('/health', (req, res) => {
-  res.status(200).json({
+  const healthStatus = {
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    version: process.env.npm_package_version || '1.0.0'
+    version: process.env.npm_package_version || '1.0.0',
+    database: {
+      connected: appState.dbConnected,
+      readyState: mongoose.connection.readyState,
+      readyStateText: getMongooseReadyStateText(mongoose.connection.readyState)
+    },
+    application: {
+      ready: appState.isReady,
+      serverStarted: appState.serverStarted,
+      errors: appState.startupErrors
+    }
+  }
+
+  // Return 503 if critical services are not ready
+  if (!appState.dbConnected || !appState.isReady) {
+    return res.status(503).json({
+      ...healthStatus,
+      status: 'SERVICE_UNAVAILABLE',
+      message: 'Service is starting up or database is not connected'
+    })
+  }
+
+  res.status(200).json(healthStatus)
+})
+
+// Detailed health check endpoint
+app.get('/health/detailed', async (req, res) => {
+  const detailedHealth = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || '1.0.0',
+    database: await getDatabaseHealth(),
+    memory: process.memoryUsage(),
+    application: {
+      ready: appState.isReady,
+      serverStarted: appState.serverStarted,
+      errors: appState.startupErrors,
+      nodeVersion: process.version,
+      platform: process.platform,
+      arch: process.arch
+    }
+  }
+
+  const isHealthy = appState.dbConnected && appState.isReady && appState.startupErrors.length === 0
+
+  res.status(isHealthy ? 200 : 503).json({
+    ...detailedHealth,
+    status: isHealthy ? 'OK' : 'SERVICE_UNAVAILABLE'
   })
 })
 
 // Age verification status endpoint (REST API for quick checks)
 app.get('/api/age-verification/:userId', async (req, res) => {
   try {
-    const { getUserVerificationSummary } = require('./middleware/ageVerification')
+    const { getUserVerificationSummary } = await import('./middleware/ageVerification.js')
     const summary = await getUserVerificationSummary(req.params.userId)
     res.json(summary)
   } catch (error) {
+    console.error('Age verification API error:', error)
     res.status(500).json({ error: error.message })
   }
 })
+
+/**
+ * Get human-readable mongoose connection state
+ * @param {number} readyState - Mongoose connection ready state
+ * @returns {string} Human-readable state
+ */
+function getMongooseReadyStateText(readyState) {
+  const states = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  }
+  return states[readyState] || 'unknown'
+}
+
+/**
+ * Get detailed database health information
+ * @returns {Promise<object>} Database health details
+ */
+async function getDatabaseHealth() {
+  try {
+    const dbHealth = {
+      connected: appState.dbConnected,
+      readyState: mongoose.connection.readyState,
+      readyStateText: getMongooseReadyStateText(mongoose.connection.readyState),
+      host: mongoose.connection.host,
+      port: mongoose.connection.port,
+      name: mongoose.connection.name
+    }
+
+    // Test database connectivity with a simple operation
+    if (appState.dbConnected) {
+      try {
+        await mongoose.connection.db.admin().ping()
+        dbHealth.ping = 'success'
+      } catch (pingError) {
+        dbHealth.ping = 'failed'
+        dbHealth.pingError = pingError.message
+      }
+    }
+
+    return dbHealth
+  } catch (error) {
+    return {
+      connected: false,
+      error: error.message
+    }
+  }
+}
 
 // Authentication middleware (placeholder - implement based on your auth system)
 const getUser = async (req) => {
@@ -132,42 +239,70 @@ const schema = makeExecutableSchema({
   resolvers
 })
 
-// Database connection
-const connectDB = async () => {
-  try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/enatega-multivendor'
-    
-    await mongoose.connect(mongoUri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000
-    })
-    
-    console.log('✅ MongoDB connected successfully')
-    
-    // Set up database event listeners
-    mongoose.connection.on('error', (error) => {
-      console.error('❌ MongoDB connection error:', error)
-    })
-    
-    mongoose.connection.on('disconnected', () => {
-      console.warn('⚠️ MongoDB disconnected')
-    })
-    
-    mongoose.connection.on('reconnected', () => {
-      console.log('✅ MongoDB reconnected')
-    })
-    
-  } catch (error) {
-    console.error('❌ MongoDB connection failed:', error)
-    process.exit(1)
+// Database connection with retry logic
+const connectDB = async (maxRetries = 5, retryDelay = 5000) => {
+  let retries = 0
+  
+  while (retries < maxRetries) {
+    try {
+      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/enatega-multivendor'
+      
+      console.log(`🔄 Attempting to connect to MongoDB (attempt ${retries + 1}/${maxRetries})...`)
+      
+      await mongoose.connect(mongoUri, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+        bufferCommands: false,
+        bufferMaxEntries: 0
+      })
+      
+      appState.dbConnected = true
+      console.log('✅ MongoDB connected successfully')
+      
+      // Set up database event listeners
+      mongoose.connection.on('error', (error) => {
+        console.error('❌ MongoDB connection error:', error)
+        appState.dbConnected = false
+        appState.startupErrors.push(`Database error: ${error.message}`)
+      })
+      
+      mongoose.connection.on('disconnected', () => {
+        console.warn('⚠️ MongoDB disconnected')
+        appState.dbConnected = false
+      })
+      
+      mongoose.connection.on('reconnected', () => {
+        console.log('✅ MongoDB reconnected')
+        appState.dbConnected = true
+      })
+      
+      return // Success, exit retry loop
+      
+    } catch (error) {
+      retries++
+      appState.dbConnected = false
+      const errorMsg = `MongoDB connection attempt ${retries} failed: ${error.message}`
+      console.error(`❌ ${errorMsg}`)
+      appState.startupErrors.push(errorMsg)
+      
+      if (retries >= maxRetries) {
+        console.error(`❌ Failed to connect to MongoDB after ${maxRetries} attempts`)
+        throw error
+      }
+      
+      console.log(`⏳ Retrying in ${retryDelay}ms...`)
+      await new Promise(resolve => setTimeout(resolve, retryDelay))
+    }
   }
 }
 
 // Start server
 const startServer = async () => {
   try {
-    // Connect to database
+    console.log('🚀 Starting CigarUnderground Backend Server...')
+    
+    // Connect to database with retry logic
     await connectDB()
     
     const PORT = process.env.PORT || 4000
@@ -235,6 +370,7 @@ const startServer = async () => {
     
     // Start Apollo Server
     await server.start()
+    appState.serverStarted = true
     
     // Apply Apollo GraphQL middleware
     app.use('/graphql',
@@ -252,12 +388,16 @@ const startServer = async () => {
       })
     )
     
+    // Mark application as ready
+    appState.isReady = true
+    
     // Start HTTP server
     httpServer.listen(PORT, HOST, () => {
       console.log(`🚀 Server ready at http://${HOST}:${PORT}`)
       console.log(`📊 GraphQL endpoint: http://${HOST}:${PORT}/graphql`)
       console.log(`🔄 GraphQL subscriptions: ws://${HOST}:${PORT}/graphql`)
       console.log(`🏥 Health check: http://${HOST}:${PORT}/health`)
+      console.log(`🔍 Detailed health: http://${HOST}:${PORT}/health/detailed`)
       console.log(`🔞 Age verification API: http://${HOST}:${PORT}/api/age-verification/:userId`)
     })
     
@@ -266,6 +406,8 @@ const startServer = async () => {
       console.log(`\n📴 Received ${signal}. Starting graceful shutdown...`)
       
       try {
+        appState.isReady = false
+        
         // Stop Apollo Server
         await server.stop()
         console.log('🛑 Apollo Server stopped')
@@ -283,7 +425,7 @@ const startServer = async () => {
           console.log('🗄️ Database connection closed')
           
           // Close PubSub connections
-          const { cleanup } = require('./helpers/pubsub')
+          const { cleanup } = await import('./helpers/pubsub.js')
           await cleanup()
           
           console.log('✅ Graceful shutdown completed')
@@ -309,16 +451,19 @@ const startServer = async () => {
     // Handle uncaught exceptions
     process.on('uncaughtException', (error) => {
       console.error('❌ Uncaught Exception:', error)
+      appState.startupErrors.push(`Uncaught exception: ${error.message}`)
       gracefulShutdown('UNCAUGHT_EXCEPTION')
     })
     
     process.on('unhandledRejection', (reason, promise) => {
       console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
+      appState.startupErrors.push(`Unhandled rejection: ${reason}`)
       gracefulShutdown('UNHANDLED_REJECTION')
     })
     
   } catch (error) {
     console.error('❌ Failed to start server:', error)
+    appState.startupErrors.push(`Server startup failed: ${error.message}`)
     process.exit(1)
   }
 }
@@ -326,4 +471,4 @@ const startServer = async () => {
 // Start the server
 startServer()
 
-module.exports = app
+export default app
