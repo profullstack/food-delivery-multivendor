@@ -321,6 +321,7 @@ show_help() {
     echo "  --dev         Start services in development mode (pnpm/npm)"
     echo "  --stop-dev    Stop development services"
     echo "  --cleanup     Clean up Docker containers, images, and volumes"
+    echo "  --clean       Same as --cleanup (alias)"
     echo "  --fresh       Clean up Docker resources and start fresh"
     echo "  --setup       Setup server configuration files (requires sudo)"
     echo "  --help        Show this help message"
@@ -335,7 +336,8 @@ show_help() {
     echo "Examples:"
     echo "  $0 --all                 # Start all Docker services"
     echo "  $0 --fresh               # Clean up and start fresh"
-    echo "  $0 --cleanup             # Clean up Docker resources only"
+    echo "  $0 --clean               # Clean up Docker resources only"
+    echo "  $0 --cleanup             # Same as --clean"
     echo "  $0 --dev                 # Start in development mode"
     echo "  $0 --docker admin        # Start only admin service"
     echo "  $0 --stop-dev            # Stop development services"
@@ -360,7 +362,7 @@ case "${1:-}" in
     "--stop-dev")
         stop_dev_services
         ;;
-    "--cleanup")
+    "--cleanup"|"--clean")
         cleanup_docker
         ;;
     "--fresh")

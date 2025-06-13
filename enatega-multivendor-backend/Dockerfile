@@ -23,7 +23,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies as root first
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy application code
 COPY . .
