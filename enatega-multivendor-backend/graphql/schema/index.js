@@ -109,10 +109,20 @@ const typeDefs = gql`
     phone: String
     address: String
     dateOfBirth: Date
+    userType: UserType!
+    permissions: [String!]!
+    isActive: Boolean!
     ageVerified: Boolean!
     ageVerificationExpiry: Date
     createdAt: Date!
     updatedAt: Date!
+  }
+
+  enum UserType {
+    SUPER_ADMIN
+    RESTAURANT_ADMIN
+    CUSTOMER
+    DELIVERY_RIDER
   }
 
   # Food

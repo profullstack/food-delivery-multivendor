@@ -1,5 +1,5 @@
-const mongoose = require('mongoose')
-const bcrypt = require('bcryptjs')
+import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 
 const userSchema = new mongoose.Schema(
   {
@@ -53,8 +53,12 @@ const userSchema = new mongoose.Schema(
     // User type and status
     userType: {
       type: String,
-      enum: ['CUSTOMER', 'ADMIN', 'VENDOR', 'RIDER'],
+      enum: ['CUSTOMER', 'SUPER_ADMIN', 'RESTAURANT_ADMIN', 'DELIVERY_RIDER'],
       default: 'CUSTOMER'
+    },
+    permissions: {
+      type: [String],
+      default: []
     },
     isActive: {
       type: Boolean,
@@ -402,10 +406,10 @@ userSchema.statics.findByLocation = function(latitude, longitude, radiusInKm = 1
 
 // Static method to find admins
 userSchema.statics.findAdmins = function() {
-  return this.find({ 
-    userType: 'ADMIN', 
-    isActive: true 
-  }).select('name email notificationToken')
+  return this.find({
+    userType: { $in: ['SUPER_ADMIN', 'RESTAURANT_ADMIN'] },
+    isActive: true
+  }).select('name email notificationToken userType permissions')
 }
 
 // Static method to get user statistics
@@ -426,4 +430,4 @@ userSchema.statics.getUserStats = async function() {
 
 const User = mongoose.model('User', userSchema)
 
-module.exports = User
+export default User
