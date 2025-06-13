@@ -10,14 +10,17 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (skip prepare scripts to avoid husky issues)
-RUN npm install --omit=dev --ignore-scripts && npm cache clean --force
+# Install all dependencies first (needed for build)
+RUN npm install --ignore-scripts && npm cache clean --force
 
 # Copy application code
 COPY . .
 
 # Build the Next.js application
 RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --omit=dev
 
 # Expose port
 EXPOSE 3000
