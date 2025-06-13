@@ -8,12 +8,17 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package*.json ./
-RUN npm ci --only=production
+# Skip husky install in Docker and install production dependencies only
+RUN npm ci --omit=dev --ignore-scripts
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Install all dependencies (including dev dependencies for build)
+COPY package*.json ./
+RUN npm ci --include=dev --ignore-scripts
+
 COPY . .
 
 # Set environment variables for build
@@ -32,6 +37,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Copy the public folder
 COPY --from=builder /app/public ./public
