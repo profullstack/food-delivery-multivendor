@@ -131,11 +131,13 @@ services:
     volumes:
       - ./scripts/setup-replica-set.js:/setup-replica-set.js:ro
       - ./scripts/mongo-init.js:/mongo-init.js:ro
+      - ./scripts/create-super-admin.js:/create-super-admin.js:ro
     command: >
       bash -c "
         sleep 30 &&
         mongosh --host mongo1:27017 --file /setup-replica-set.js &&
-        mongosh --host mongo1:27017 /mongo-init.js
+        mongosh --host mongo1:27017 /mongo-init.js &&
+        mongosh --host mongo1:27017 /create-super-admin.js
       "
     restart: "no"
 

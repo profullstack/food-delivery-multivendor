@@ -1,0 +1,7 @@
+{
+	"type": "module",
+	"dependencies": {
+		"mongodb": "^6.17.0",
+		"bcrypt": "^6.0.0"
+	}
+}
