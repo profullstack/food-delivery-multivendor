@@ -245,11 +245,17 @@ setup_server() {
     
     # Test nginx configuration
     print_status "Testing nginx configuration..."
-    if nginx -t; then
-        print_success "Nginx configuration is valid"
+    if command_exists nginx; then
+        if nginx -t; then
+            print_success "Nginx configuration is valid"
+        else
+            print_error "Nginx configuration test failed"
+            print_warning "Please check the configuration and SSL certificate paths"
+        fi
     else
-        print_error "Nginx configuration test failed"
-        print_warning "Please check the configuration and SSL certificate paths"
+        print_warning "Nginx is not installed. Configuration will be tested when nginx is installed."
+        print_status "To install nginx on Ubuntu/Debian: sudo apt update && sudo apt install nginx"
+        print_status "To install nginx on CentOS/RHEL: sudo yum install nginx"
     fi
     
     # Reload systemd
