@@ -1,31 +1,31 @@
 # Use Node.js 18 LTS as base image
 FROM node:18-alpine
 
-# Set working directory
-WORKDIR /app
+# Install system dependencies and curl for health check
+RUN apk add --no-cache libc6-compat curl
 
-# Install system dependencies
-RUN apk add --no-cache libc6-compat
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy application code
-COPY . .
-
-# Build the Next.js application
-RUN npm run build
-
-# Create non-root user for security
+# Create non-root user for security (do this early)
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
+# Set working directory and change ownership
+WORKDIR /app
+RUN chown nextjs:nodejs /app
+
+# Switch to nextjs user for dependency installation
 USER nextjs
+
+# Copy package files with correct ownership
+COPY --chown=nextjs:nodejs package*.json ./
+
+# Install dependencies as nextjs user
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application code with correct ownership
+COPY --chown=nextjs:nodejs . .
+
+# Build the Next.js application
+RUN npm run build
 
 # Expose port
 EXPOSE 3000

@@ -1,9 +1,6 @@
 # Use Node.js 18 LTS as base image
 FROM node:18-alpine
 
-# Set working directory
-WORKDIR /app
-
 # Install system dependencies for native modules
 RUN apk add --no-cache \
     python3 \
@@ -19,22 +16,25 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev
 
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy application code
-COPY . .
-
-# Create non-root user for security
+# Create non-root user for security (do this early)
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /app
+# Set working directory and change ownership
+WORKDIR /app
+RUN chown nodejs:nodejs /app
+
+# Switch to nodejs user for dependency installation
 USER nodejs
+
+# Copy package files with correct ownership
+COPY --chown=nodejs:nodejs package*.json ./
+
+# Install dependencies as nodejs user
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application code with correct ownership
+COPY --chown=nodejs:nodejs . .
 
 # Expose port
 EXPOSE 4000

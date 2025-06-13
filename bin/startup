@@ -62,13 +62,23 @@ start_docker_services() {
         exit 1
     fi
     
-    # Start all Docker services
+    # Start all Docker services with timeout
     print_status "Starting all Docker containers..."
-    docker compose up -d
+    print_warning "This may take several minutes for the first build..."
+    
+    # Set timeout for docker compose (30 minutes)
+    timeout 1800 docker compose up -d --build || {
+        print_error "Docker build/startup timed out after 30 minutes"
+        print_status "Checking what containers are running..."
+        docker compose ps
+        print_status "Checking logs for failed services..."
+        docker compose logs --tail=50
+        exit 1
+    }
     
     # Wait for services to be healthy
     print_status "Waiting for services to be healthy..."
-    sleep 10
+    sleep 15
     
     # Check service status
     print_status "Checking service status..."
@@ -153,6 +163,25 @@ stop_dev_services() {
     docker compose stop mongo1 mongo2 mongo3 redis mongo-setup
     
     print_success "Development services stopped!"
+}
+
+# Function to clean up Docker resources
+cleanup_docker() {
+    print_status "Cleaning up Docker resources..."
+    
+    # Stop all containers
+    print_status "Stopping all containers..."
+    docker compose down --remove-orphans || true
+    
+    # Remove old images to force rebuild
+    print_status "Removing old images..."
+    docker compose down --rmi all --volumes --remove-orphans || true
+    
+    # Prune unused Docker resources
+    print_status "Pruning unused Docker resources..."
+    docker system prune -f || true
+    
+    print_success "Docker cleanup completed!"
 }
 
 # Function to start specific service
@@ -291,6 +320,8 @@ show_help() {
     echo "  --docker      Start all services with Docker"
     echo "  --dev         Start services in development mode (pnpm/npm)"
     echo "  --stop-dev    Stop development services"
+    echo "  --cleanup     Clean up Docker containers, images, and volumes"
+    echo "  --fresh       Clean up Docker resources and start fresh"
     echo "  --setup       Setup server configuration files (requires sudo)"
     echo "  --help        Show this help message"
     echo ""
@@ -303,6 +334,8 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 --all                 # Start all Docker services"
+    echo "  $0 --fresh               # Clean up and start fresh"
+    echo "  $0 --cleanup             # Clean up Docker resources only"
     echo "  $0 --dev                 # Start in development mode"
     echo "  $0 --docker admin        # Start only admin service"
     echo "  $0 --stop-dev            # Stop development services"
@@ -326,6 +359,13 @@ case "${1:-}" in
         ;;
     "--stop-dev")
         stop_dev_services
+        ;;
+    "--cleanup")
+        cleanup_docker
+        ;;
+    "--fresh")
+        cleanup_docker
+        start_docker_services
         ;;
     "--setup")
         setup_server
