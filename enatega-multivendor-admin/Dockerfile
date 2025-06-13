@@ -1,5 +1,5 @@
-# Use Node.js 18 LTS as base image
-FROM node:18-alpine
+# Use Node.js 20 LTS as base image
+FROM node:20-alpine
 
 # Install system dependencies and curl for health check
 RUN apk add --no-cache libc6-compat curl
@@ -10,8 +10,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --only=production && npm cache clean --force
+# Install dependencies (skip prepare scripts to avoid husky issues)
+RUN npm install --omit=dev --ignore-scripts && npm cache clean --force
 
 # Copy application code
 COPY . .

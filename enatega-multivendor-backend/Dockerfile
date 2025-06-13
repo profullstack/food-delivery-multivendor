@@ -1,5 +1,5 @@
-# Use Node.js 18 LTS as base image
-FROM node:18-alpine
+# Use Node.js 20 LTS as base image
+FROM node:20-alpine
 
 # Install system dependencies for native modules
 RUN apk add --no-cache \
@@ -22,8 +22,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --only=production && npm cache clean --force
+# Install dependencies (skip scripts to avoid issues)
+RUN npm install --omit=dev --ignore-scripts && npm cache clean --force
 
 # Copy application code
 COPY . .
