@@ -14,20 +14,13 @@ import dotenv from 'dotenv'
 // Configure environment variables
 dotenv.config()
 
-// Import GraphQL schema and resolvers
-import ageVerificationSchema from './graphql/schema/ageVerification.js'
-import ageVerificationResolvers from './graphql/resolvers/ageVerification.js'
-
-// Import middleware
-import { ageVerificationMiddleware } from './middleware/ageVerification.js'
-
 // Import helpers
-import { pubsub } from './helpers/pubsub.js'
+// import { pubsub } from './helpers/pubsub.js'
 
 // Import models to ensure they're registered
-import './models/user.js'
-import './models/food.js'
-import './models/ageVerification.js'
+// import './models/user.js'
+// import './models/food.js'
+// import './models/ageVerification.js'
 
 const app = express()
 
@@ -56,6 +49,22 @@ app.use(cors(corsOptions))
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// Root endpoint for basic connectivity testing
+app.get('/', (req, res) => {
+  res.status(200).json({
+    service: 'CigarUnderground Backend API',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0',
+    endpoints: {
+      health: '/health',
+      healthDetailed: '/health/detailed',
+      graphql: '/graphql',
+      ageVerification: '/api/age-verification/:userId'
+    }
+  })
+})
 
 // Enhanced health check endpoint with database status
 app.get('/health', (req, res) => {
@@ -120,9 +129,12 @@ app.get('/health/detailed', async (req, res) => {
 // Age verification status endpoint (REST API for quick checks)
 app.get('/api/age-verification/:userId', async (req, res) => {
   try {
-    const { getUserVerificationSummary } = await import('./middleware/ageVerification.js')
-    const summary = await getUserVerificationSummary(req.params.userId)
-    res.json(summary)
+    // TODO: Implement age verification logic
+    res.json({
+      userId: req.params.userId,
+      verified: false,
+      message: 'Age verification not implemented yet'
+    })
   } catch (error) {
     console.error('Age verification API error:', error)
     res.status(500).json({ error: error.message })

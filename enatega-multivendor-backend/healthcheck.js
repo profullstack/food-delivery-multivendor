@@ -1,6 +1,5 @@
-// healthcheck.js - Docker health check script
-import http from 'http'
-import { promisify } from 'util'
+// healthcheck.js - Docker health check script (CommonJS for compatibility)
+const http = require('http')
 
 /**
  * Health check configuration
