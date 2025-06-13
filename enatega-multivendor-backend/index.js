@@ -218,6 +218,7 @@ const startServer = async () => {
         }
       ],
       introspection: process.env.GRAPHQL_INTROSPECTION === 'true',
+      csrfPrevention: false, // Disable CSRF protection for easier API access
       formatError: (error) => {
         console.error('GraphQL Error:', error)
         
