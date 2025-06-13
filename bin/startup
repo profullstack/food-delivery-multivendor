@@ -57,14 +57,14 @@ start_docker_services() {
         exit 1
     fi
     
-    if ! command_exists docker-compose; then
+    if ! command_exists docker compose; then
         print_error "Docker Compose is not installed"
         exit 1
     fi
     
     # Start all Docker services
     print_status "Starting all Docker containers..."
-    docker-compose up -d
+    docker compose up -d
     
     # Wait for services to be healthy
     print_status "Waiting for services to be healthy..."
@@ -72,7 +72,7 @@ start_docker_services() {
     
     # Check service status
     print_status "Checking service status..."
-    docker-compose ps
+    docker compose ps
     
     print_success "Docker services started successfully!"
     print_status "Services available at:"
@@ -97,7 +97,7 @@ start_dev_services() {
     
     # Start MongoDB and Redis with Docker (required dependencies)
     print_status "Starting database services..."
-    docker-compose up -d mongo1 mongo2 mongo3 redis mongo-setup
+    docker compose up -d mongo1 mongo2 mongo3 redis mongo-setup
     
     # Wait for databases to be ready
     print_status "Waiting for databases to be ready..."
@@ -150,7 +150,7 @@ stop_dev_services() {
     fi
     
     # Stop database containers
-    docker-compose stop mongo1 mongo2 mongo3 redis mongo-setup
+    docker compose stop mongo1 mongo2 mongo3 redis mongo-setup
     
     print_success "Development services stopped!"
 }
@@ -162,23 +162,23 @@ start_specific_service() {
     case $service in
         "admin"|"admin-panel")
             print_status "Starting admin panel service..."
-            docker-compose up -d cigarunderground-admin
+            docker compose up -d cigarunderground-admin
             ;;
         "api"|"backend")
             print_status "Starting backend API service..."
-            docker-compose up -d cigarunderground-backend
+            docker compose up -d cigarunderground-backend
             ;;
         "nginx"|"proxy")
             print_status "Starting nginx proxy..."
-            docker-compose up -d nginx
+            docker compose up -d nginx
             ;;
         "mongo"|"mongodb"|"database")
             print_status "Starting MongoDB services..."
-            docker-compose up -d mongo1 mongo2 mongo3 mongo-setup
+            docker compose up -d mongo1 mongo2 mongo3 mongo-setup
             ;;
         "redis"|"cache")
             print_status "Starting Redis service..."
-            docker-compose up -d redis
+            docker compose up -d redis
             ;;
         *)
             print_error "Unknown service: $service"
