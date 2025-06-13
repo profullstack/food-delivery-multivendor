@@ -5,6 +5,9 @@ import cors from 'cors'
 import helmet from 'helmet'
 import dotenv from 'dotenv'
 
+// GraphQL Server Setup
+import { createApolloServer, setupGraphQLMiddleware } from './graphql/server.js'
+
 // Configure environment variables
 dotenv.config()
 
@@ -258,6 +261,24 @@ const startServer = async () => {
     // Create HTTP server
     const httpServer = http.createServer(app)
     
+    // Setup GraphQL server
+    try {
+      console.log('🔧 Setting up GraphQL server...')
+      const apolloServer = await createApolloServer(httpServer, {
+        introspection: process.env.GRAPHQL_INTROSPECTION === 'true',
+        playground: process.env.GRAPHQL_PLAYGROUND === 'true'
+      })
+      
+      // Setup GraphQL middleware
+      setupGraphQLMiddleware(app, apolloServer, '/graphql')
+      
+      console.log('✅ GraphQL server setup completed')
+    } catch (graphqlError) {
+      console.error('❌ GraphQL server setup failed:', graphqlError)
+      appState.startupErrors.push(`GraphQL setup failed: ${graphqlError.message}`)
+      // Continue without GraphQL for basic health checks
+    }
+    
     // Mark application as ready
     appState.isReady = true
     appState.serverStarted = true
@@ -268,6 +289,10 @@ const startServer = async () => {
       console.log(`🏥 Health check: http://${HOST}:${PORT}/health`)
       console.log(`🔍 Detailed health: http://${HOST}:${PORT}/health/detailed`)
       console.log(`🔞 Age verification API: http://${HOST}:${PORT}/api/age-verification/:userId`)
+      console.log(`🎯 GraphQL endpoint: http://${HOST}:${PORT}/graphql`)
+      if (process.env.GRAPHQL_PLAYGROUND === 'true') {
+        console.log(`🎮 GraphQL playground: http://${HOST}:${PORT}/graphql`)
+      }
     })
     
     // Graceful shutdown

@@ -1,11 +1,15 @@
-const { GraphQLError } = require('graphql')
-const { withFilter } = require('graphql-subscriptions')
-const AgeVerification = require('../../models/ageVerification')
-const User = require('../../models/user')
-const { uploadImageToCloudinary, deleteImageFromCloudinary } = require('../../helpers/cloudinary')
-const { sendNotificationToUser } = require('../../helpers/notifications')
-const { validateAge, validateDocumentType } = require('../../helpers/validation')
-const pubsub = require('../../helpers/pubsub')
+import { GraphQLError } from 'graphql'
+import { withFilter } from 'graphql-subscriptions'
+import { createRequire } from 'module'
+
+// Use createRequire to import CommonJS modules
+const require = createRequire(import.meta.url)
+const AgeVerification = require('../../models/ageVerification.js')
+const User = require('../../models/user.js')
+const { uploadImageToCloudinary, deleteImageFromCloudinary } = require('../../helpers/cloudinary.js')
+const { sendNotificationToUser } = require('../../helpers/notifications.js')
+const { validateAge, validateDocumentType } = require('../../helpers/validation.js')
+const pubsub = require('../../helpers/pubsub.js')
 
 const AGE_VERIFICATION_UPDATED = 'AGE_VERIFICATION_UPDATED'
 const NEW_AGE_VERIFICATION_SUBMISSION = 'NEW_AGE_VERIFICATION_SUBMISSION'
@@ -386,4 +390,4 @@ const ageVerificationResolvers = {
   }
 }
 
-module.exports = ageVerificationResolvers
+export default ageVerificationResolvers

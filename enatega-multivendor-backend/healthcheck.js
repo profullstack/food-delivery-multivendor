@@ -1,5 +1,5 @@
-// healthcheck.js - Docker health check script (CommonJS for compatibility)
-const http = require('http')
+// healthcheck.js - Docker health check script (ESM for compatibility)
+import http from 'http'
 
 /**
  * Health check configuration
