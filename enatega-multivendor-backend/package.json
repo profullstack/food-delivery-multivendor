@@ -1,5 +1,5 @@
 {
-  "name": "enatega-multivendor-backend",
+  "name": "cigarunderground-backend",
   "version": "1.0.0",
   "description": "Backend API for Enatega Multi-vendor Food Delivery Platform with Age Verification",
   "main": "index.js",

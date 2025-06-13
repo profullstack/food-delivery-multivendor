@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Enatega Multivendor Rider",
-    "description": "Enatega is a starter kit food ordering app built in React Native using Expo for IOS and Android. It's made keeping good aesthetics in mind as well keeping the best coding practices in mind. Its fully customisable to easily help you in your next food delivery project. https://market.nativebase.io/view/react-native-food-delivery-backend-app",
+    "name": "CigarUnderground Rider",
+    "description": "CigarUnderground Rider - Premium tobacco and cigar delivery rider app built with React Native using Expo for iOS and Android. Deliver premium cigars, tobacco products, and accessories to customers.",
     "version": "1.1.38",
-    "slug": "food-delivery-rider-multivendor",
+    "slug": "cigarunderground-rider",
     "orientation": "portrait",
     "splash": {
       "image": "./lib/assets/images/black.png",
       "resizeMode": "cover",
       "backgroundColor": "#000000"
     },
-    "icon": "./lib/assets/images/icon.png",
+    "icon": "./lib/assets/images/logo-cigar-underground.png",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -41,11 +41,11 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.enatega.multirider",
+      "bundleIdentifier": "com.cigarunderground.rider",
       "config": {
         "googleMapsApiKey": "AIzaSyCcm7_Wd7uvmC9YnYLu2JHGWPt6z1MaL1E"
       },
-      "icon": "./lib/assets/images/icon.png",
+      "icon": "./lib/assets/images/logo-cigar-underground.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "$(PRODUCT_NAME) uses your location for features like finding orders nearby and tracking customer orders!",
         "UIBackgroundModes": [
@@ -68,10 +68,10 @@
           "apiKey": "AIzaSyCcm7_Wd7uvmC9YnYLu2JHGWPt6z1MaL1E"
         }
       },
-      "package": "com.enatega.multirider",
-      "icon": "./lib/assets/images/appIcon.png",
+      "package": "com.cigarunderground.rider",
+      "icon": "./lib/assets/images/logo-cigar-underground.png",
       "adaptiveIcon": {
-        "foregroundImage": "./lib/assets/images/appIcon.png",
+        "foregroundImage": "./lib/assets/images/logo-cigar-underground.png",
         "backgroundColor": "#ffffff"
       }
     },

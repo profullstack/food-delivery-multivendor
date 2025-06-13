@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Enatega Store",
-    "slug": "enatega-multivendor-restaurant",
-    "description": "Enatega is a starter kit food ordering app built in React Native using Expo for IOS and Android. It's made keeping good aesthetics in mind as well keeping the best coding practices in mind. Its fully customisable to easily help you in your next food delivery project. https://market.nativebase.io/view/react-native-food-delivery-backend-app",
+    "name": "CigarUnderground Store",
+    "slug": "cigarunderground-store",
+    "description": "CigarUnderground Store - Premium tobacco and cigar store management app built with React Native using Expo for iOS and Android. Manage your cigar store inventory, orders, and customer relationships.",
     "version": "1.0.41",
     "orientation": "portrait",
-    "icon": "./lib/assets/images/icon.png",
+    "icon": "./lib/assets/images/logo-cigar-underground.png",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -40,7 +40,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "multivendor.enatega.restaurant",
+      "bundleIdentifier": "com.cigarunderground.store",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "$(PRODUCT_NAME) uses your location for features like finding orders nearby and tracking customer orders!",
         "UIBackgroundModes": [
@@ -57,9 +57,9 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ],
-      "package": "multivendor.enatega.restaurant",
+      "package": "com.cigarunderground.store",
       "adaptiveIcon": {
-        "foregroundImage": "./lib/assets/images/appIcon.png",
+        "foregroundImage": "./lib/assets/images/logo-cigar-underground.png",
         "backgroundColor": "#ffffff"
       }
     },

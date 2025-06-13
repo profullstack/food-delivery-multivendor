@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Enatega Multi",
-    "scheme": "enategamultivendor",
+    "name": "CigarUnderground",
+    "scheme": "cigarunderground",
     "version": "1.0.72",
-    "description": "Enatega is a starter kit food ordering app built in React Native using Expo for IOS and Android. It's made keeping good aesthetics in mind as well keeping the best coding practices in mind. Its fully customisable to easily help you in your next food delivery project. https://market.nativebase.io/view/react-native-food-delivery-backend-app",
-    "slug": "enategamultivendor",
+    "description": "CigarUnderground - Premium tobacco and cigar delivery app built with React Native using Expo for iOS and Android. Discover and order premium cigars, tobacco products, and accessories with fast delivery.",
+    "slug": "cigarunderground",
     "owner": "ninjas_code",
     "privacy": "public",
     "androidStatusBar": {
@@ -15,7 +15,7 @@
       "android"
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo-cigar-underground.png",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -26,7 +26,7 @@
       },
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.enatega.multivendor",
+      "bundleIdentifier": "com.cigarunderground.app",
       "config": {
         "googleMapsApiKey": "AIzaSyCcm7_Wd7uvmC9YnYLu2JHGWPt6z1MaL1E"
       },
@@ -58,11 +58,11 @@
       "color": "#90E36D",
       "icon": "./assets/not-icon.png",
       "androidMode": "default",
-      "androidCollapsedTitle": "Enatega Multivendor"
+      "androidCollapsedTitle": "CigarUnderground"
     },
     "android": {
       "versionCode": 72,
-      "package": "com.enatega.multivendor",
+      "package": "com.cigarunderground.app",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
       "config": {
@@ -132,7 +132,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow $Enatega Multivendor to use your location."
+          "locationAlwaysAndWhenInUsePermission": "Allow CigarUnderground to use your location."
         }
       ]
     ],
