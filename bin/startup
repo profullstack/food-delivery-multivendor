@@ -167,21 +167,29 @@ stop_dev_services() {
 
 # Function to clean up Docker resources
 cleanup_docker() {
-    print_status "Cleaning up Docker resources..."
+    print_status "Cleaning up CigarUnderground Docker resources..."
     
-    # Stop all containers
-    print_status "Stopping all containers..."
-    docker compose down --remove-orphans || true
+    # Stop and remove project containers only
+    print_status "Stopping project containers..."
+    docker compose down --remove-orphans 2>/dev/null || true
     
-    # Remove old images to force rebuild
-    print_status "Removing old images..."
-    docker compose down --rmi all --volumes --remove-orphans || true
+    # Remove project-specific images (built locally)
+    print_status "Removing project-built images..."
+    docker compose down --rmi local 2>/dev/null || true
     
-    # Prune unused Docker resources
-    print_status "Pruning unused Docker resources..."
-    docker system prune -f || true
+    # Remove specific project containers if they exist
+    print_status "Removing any remaining project containers..."
+    docker rm -f cigarunderground-backend cigarunderground-admin cigarunderground-nginx cigarunderground-mongo1 cigarunderground-mongo2 cigarunderground-mongo3 cigarunderground-redis cigarunderground-mongo-setup 2>/dev/null || true
     
-    print_success "Docker cleanup completed!"
+    # Remove project-specific images by name
+    print_status "Removing project images by name..."
+    docker rmi food-delivery-multivendor-cigarunderground-backend food-delivery-multivendor-cigarunderground-admin 2>/dev/null || true
+    
+    # Remove project volumes only
+    print_status "Removing project volumes..."
+    docker volume rm food-delivery-multivendor_mongo1_data food-delivery-multivendor_mongo2_data food-delivery-multivendor_mongo3_data food-delivery-multivendor_redis_data 2>/dev/null || true
+    
+    print_success "CigarUnderground Docker cleanup completed!"
 }
 
 # Function to start specific service
