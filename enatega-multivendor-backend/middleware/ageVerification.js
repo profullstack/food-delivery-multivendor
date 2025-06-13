@@ -1,4 +1,4 @@
-const { ForbiddenError, UserInputError } = require('apollo-server-express')
+const { GraphQLError } = require('graphql')
 const AgeVerification = require('../models/ageVerification')
 const Food = require('../models/food')
 
@@ -10,7 +10,9 @@ const Food = require('../models/food')
  */
 const checkAgeVerificationForItems = async (user, items) => {
   if (!user) {
-    throw new ForbiddenError('Authentication required')
+    throw new GraphQLError('Authentication required', {
+      extensions: { code: 'UNAUTHENTICATED' }
+    })
   }
   
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -37,8 +39,9 @@ const checkAgeVerificationForItems = async (user, items) => {
   const verification = await AgeVerification.findOne({ user: user._id })
   
   if (!verification) {
-    throw new ForbiddenError(
-      'Age verification required to purchase restricted items. Please upload a valid ID document.'
+    throw new GraphQLError(
+      'Age verification required to purchase restricted items. Please upload a valid ID document.',
+      { extensions: { code: 'FORBIDDEN' } }
     )
   }
   
@@ -47,14 +50,16 @@ const checkAgeVerificationForItems = async (user, items) => {
       ? 'Your age verification is still being reviewed.'
       : 'Your age verification was rejected. Please upload a new document.'
     
-    throw new ForbiddenError(
-      `Age verification required to purchase restricted items. ${statusMessage}`
+    throw new GraphQLError(
+      `Age verification required to purchase restricted items. ${statusMessage}`,
+      { extensions: { code: 'FORBIDDEN' } }
     )
   }
   
   if (!verification.isValid) {
-    throw new ForbiddenError(
-      'Your age verification has expired. Please upload a new document.'
+    throw new GraphQLError(
+      'Your age verification has expired. Please upload a new document.',
+      { extensions: { code: 'FORBIDDEN' } }
     )
   }
   
@@ -66,8 +71,9 @@ const checkAgeVerificationForItems = async (user, items) => {
     )
     
     if (!canPurchase) {
-      throw new ForbiddenError(
-        `You are not eligible to purchase ${item.title}. Age verification required for ${item.restrictedItemType.toLowerCase()} products.`
+      throw new GraphQLError(
+        `You are not eligible to purchase ${item.title}. Age verification required for ${item.restrictedItemType.toLowerCase()} products.`,
+        { extensions: { code: 'FORBIDDEN' } }
       )
     }
   }
@@ -99,7 +105,9 @@ const checkFoodItemRestriction = async (foodId) => {
   const food = await Food.findById(foodId)
   
   if (!food) {
-    throw new UserInputError('Food item not found')
+    throw new GraphQLError('Food item not found', {
+      extensions: { code: 'BAD_USER_INPUT' }
+    })
   }
   
   return {

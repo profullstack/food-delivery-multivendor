@@ -1,5 +1,11 @@
 const express = require('express')
-const { ApolloServer } = require('apollo-server-express')
+const { ApolloServer } = require('@apollo/server')
+const { expressMiddleware } = require('@apollo/server/express4')
+const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/drainHttpServer')
+const { makeExecutableSchema } = require('@graphql-tools/schema')
+const { WebSocketServer } = require('ws')
+const { useServer } = require('graphql-ws/lib/use/ws')
+const http = require('http')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const helmet = require('helmet')
@@ -120,62 +126,10 @@ const resolvers = {
   // Add other resolvers here as they're created
 }
 
-// Create Apollo Server
-const server = new ApolloServer({
+// Create executable schema
+const schema = makeExecutableSchema({
   typeDefs,
-  resolvers,
-  context: async ({ req, connection }) => {
-    if (connection) {
-      // WebSocket connection for subscriptions
-      return {
-        pubsub,
-        user: connection.context.user
-      }
-    }
-    
-    // HTTP request
-    const user = await getUser(req)
-    return {
-      req,
-      user,
-      pubsub
-    }
-  },
-  subscriptions: {
-    onConnect: async (connectionParams, webSocket, context) => {
-      try {
-        // TODO: Implement WebSocket authentication
-        // const token = connectionParams.authorization?.replace('Bearer ', '')
-        // if (token) {
-        //   const decoded = jwt.verify(token, process.env.JWT_SECRET)
-        //   const user = await User.findById(decoded.userId)
-        //   return { user }
-        // }
-        return {}
-      } catch (error) {
-        console.error('WebSocket authentication error:', error)
-        throw new Error('Authentication failed')
-      }
-    },
-    onDisconnect: (webSocket, context) => {
-      console.log('WebSocket disconnected')
-    }
-  },
-  playground: process.env.GRAPHQL_PLAYGROUND === 'true',
-  introspection: process.env.GRAPHQL_INTROSPECTION === 'true',
-  uploads: false, // Disable built-in upload handling (we use graphql-upload)
-  formatError: (error) => {
-    console.error('GraphQL Error:', error)
-    
-    // Don't expose internal errors in production
-    if (process.env.NODE_ENV === 'production') {
-      if (error.message.includes('Database') || error.message.includes('Internal')) {
-        return new Error('Internal server error')
-      }
-    }
-    
-    return error
-  }
+  resolvers
 })
 
 // Database connection
@@ -216,36 +170,109 @@ const startServer = async () => {
     // Connect to database
     await connectDB()
     
+    const PORT = process.env.PORT || 4000
+    const HOST = process.env.HOST || '0.0.0.0'
+    
+    // Create HTTP server
+    const httpServer = http.createServer(app)
+    
+    // Create WebSocket server for subscriptions
+    const wsServer = new WebSocketServer({
+      server: httpServer,
+      path: '/graphql'
+    })
+    
+    // Set up WebSocket server for GraphQL subscriptions
+    const serverCleanup = useServer({
+      schema,
+      context: async (ctx, msg, args) => {
+        try {
+          // TODO: Implement WebSocket authentication
+          // const token = ctx.connectionParams?.authorization?.replace('Bearer ', '')
+          // if (token) {
+          //   const decoded = jwt.verify(token, process.env.JWT_SECRET)
+          //   const user = await User.findById(decoded.userId)
+          //   return { user, pubsub }
+          // }
+          return { pubsub }
+        } catch (error) {
+          console.error('WebSocket authentication error:', error)
+          throw new Error('Authentication failed')
+        }
+      }
+    }, wsServer)
+    
+    // Create Apollo Server
+    const server = new ApolloServer({
+      schema,
+      plugins: [
+        ApolloServerPluginDrainHttpServer({ httpServer }),
+        {
+          async serverWillStart() {
+            return {
+              async drainServer() {
+                await serverCleanup.dispose()
+              }
+            }
+          }
+        }
+      ],
+      introspection: process.env.GRAPHQL_INTROSPECTION === 'true',
+      formatError: (error) => {
+        console.error('GraphQL Error:', error)
+        
+        // Don't expose internal errors in production
+        if (process.env.NODE_ENV === 'production') {
+          if (error.message.includes('Database') || error.message.includes('Internal')) {
+            return new Error('Internal server error')
+          }
+        }
+        
+        return error
+      }
+    })
+    
     // Start Apollo Server
     await server.start()
     
     // Apply Apollo GraphQL middleware
-    server.applyMiddleware({ 
-      app, 
-      path: '/graphql',
-      cors: false // We handle CORS above
-    })
-    
-    const PORT = process.env.PORT || 4000
-    const HOST = process.env.HOST || 'localhost'
+    app.use('/graphql',
+      cors(corsOptions),
+      express.json(),
+      expressMiddleware(server, {
+        context: async ({ req }) => {
+          const user = await getUser(req)
+          return {
+            req,
+            user,
+            pubsub
+          }
+        }
+      })
+    )
     
     // Start HTTP server
-    const httpServer = app.listen(PORT, HOST, () => {
+    httpServer.listen(PORT, HOST, () => {
       console.log(`🚀 Server ready at http://${HOST}:${PORT}`)
-      console.log(`📊 GraphQL endpoint: http://${HOST}:${PORT}${server.graphqlPath}`)
-      console.log(`🔄 GraphQL subscriptions: ws://${HOST}:${PORT}${server.subscriptionsPath}`)
+      console.log(`📊 GraphQL endpoint: http://${HOST}:${PORT}/graphql`)
+      console.log(`🔄 GraphQL subscriptions: ws://${HOST}:${PORT}/graphql`)
       console.log(`🏥 Health check: http://${HOST}:${PORT}/health`)
       console.log(`🔞 Age verification API: http://${HOST}:${PORT}/api/age-verification/:userId`)
     })
-    
-    // Install subscription handlers
-    server.installSubscriptionHandlers(httpServer)
     
     // Graceful shutdown
     const gracefulShutdown = async (signal) => {
       console.log(`\n📴 Received ${signal}. Starting graceful shutdown...`)
       
       try {
+        // Stop Apollo Server
+        await server.stop()
+        console.log('🛑 Apollo Server stopped')
+        
+        // Close WebSocket server
+        await serverCleanup.dispose()
+        console.log('🔌 WebSocket server closed')
+        
         // Stop accepting new connections
         httpServer.close(async () => {
           console.log('🔌 HTTP server closed')

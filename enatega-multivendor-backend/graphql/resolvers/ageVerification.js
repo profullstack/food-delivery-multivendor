@@ -1,4 +1,4 @@
-const { AuthenticationError, ForbiddenError, UserInputError } = require('apollo-server-express')
+const { GraphQLError } = require('graphql')
 const { withFilter } = require('graphql-subscriptions')
 const AgeVerification = require('../../models/ageVerification')
 const User = require('../../models/user')
@@ -13,7 +13,9 @@ const NEW_AGE_VERIFICATION_SUBMISSION = 'NEW_AGE_VERIFICATION_SUBMISSION'
 const ageVerificationResolvers = {
   Query: {
     getAgeVerificationStatus: async (_, __, { user }) => {
-      if (!user) throw new AuthenticationError('Authentication required')
+      if (!user) throw new GraphQLError('Authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' }
+      })
       
       const verification = await AgeVerification.findOne({ user: user._id })
       
@@ -41,7 +43,9 @@ const ageVerificationResolvers = {
 
     getAgeVerificationReviews: async (_, { limit = 20, offset = 0 }, { user }) => {
       if (!user || user.userType !== 'ADMIN') {
-        throw new ForbiddenError('Admin access required')
+        throw new GraphQLError('Admin access required', {
+          extensions: { code: 'FORBIDDEN' }
+        })
       }
       
       const reviews = await AgeVerification.getPendingReviews(limit, offset)
@@ -64,26 +68,34 @@ const ageVerificationResolvers = {
 
   Mutation: {
     uploadAgeVerificationDocument: async (_, { file, input }, { user }) => {
-      if (!user) throw new AuthenticationError('Authentication required')
+      if (!user) throw new GraphQLError('Authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' }
+      })
       
       try {
         // Validate input
         const { documentType, dateOfBirth } = input
         
         if (!validateDocumentType(documentType)) {
-          throw new UserInputError('Invalid document type')
+          throw new GraphQLError('Invalid document type', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         const birthDate = new Date(dateOfBirth)
         if (!validateAge(birthDate)) {
-          throw new UserInputError('Invalid date of birth or user is under 18')
+          throw new GraphQLError('Invalid date of birth or user is under 18', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         // Check if user already has a verification
         const existingVerification = await AgeVerification.findOne({ user: user._id })
         
         if (existingVerification && existingVerification.status === 'VERIFIED') {
-          throw new UserInputError('User already has verified age verification')
+          throw new GraphQLError('User already has verified age verification', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         // Process file upload
@@ -91,7 +103,9 @@ const ageVerificationResolvers = {
         
         // Validate file
         if (!['image/jpeg', 'image/png'].includes(mimetype)) {
-          throw new UserInputError('Only JPEG and PNG files are allowed')
+          throw new GraphQLError('Only JPEG and PNG files are allowed', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         const stream = createReadStream()
@@ -105,7 +119,9 @@ const ageVerificationResolvers = {
         
         // Check file size (5MB limit)
         if (buffer.length > 5 * 1024 * 1024) {
-          throw new UserInputError('File size must be less than 5MB')
+          throw new GraphQLError('File size must be less than 5MB', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         // Upload to Cloudinary
@@ -192,13 +208,17 @@ const ageVerificationResolvers = {
         
       } catch (error) {
         console.error('Age verification upload error:', error)
-        throw new UserInputError(error.message || 'Failed to upload age verification document')
+        throw new GraphQLError(error.message || 'Failed to upload age verification document', {
+          extensions: { code: 'BAD_USER_INPUT' }
+        })
       }
     },
 
     reviewAgeVerification: async (_, { input }, { user }) => {
       if (!user || user.userType !== 'ADMIN') {
-        throw new ForbiddenError('Admin access required')
+        throw new GraphQLError('Admin access required', {
+          extensions: { code: 'FORBIDDEN' }
+        })
       }
       
       try {
@@ -207,11 +227,15 @@ const ageVerificationResolvers = {
         const verification = await AgeVerification.findOne({ user: userId })
         
         if (!verification) {
-          throw new UserInputError('Age verification not found')
+          throw new GraphQLError('Age verification not found', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         if (verification.status !== 'PENDING') {
-          throw new UserInputError('Age verification has already been reviewed')
+          throw new GraphQLError('Age verification has already been reviewed', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         // Update verification
@@ -274,18 +298,24 @@ const ageVerificationResolvers = {
         
       } catch (error) {
         console.error('Age verification review error:', error)
-        throw new UserInputError(error.message || 'Failed to review age verification')
+        throw new GraphQLError(error.message || 'Failed to review age verification', {
+          extensions: { code: 'BAD_USER_INPUT' }
+        })
       }
     },
 
     deleteAgeVerificationDocument: async (_, __, { user }) => {
-      if (!user) throw new AuthenticationError('Authentication required')
+      if (!user) throw new GraphQLError('Authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' }
+      })
       
       try {
         const verification = await AgeVerification.findOne({ user: user._id })
         
         if (!verification) {
-          throw new UserInputError('No age verification found')
+          throw new GraphQLError('No age verification found', {
+            extensions: { code: 'BAD_USER_INPUT' }
+          })
         }
         
         // Delete from Cloudinary
@@ -300,7 +330,9 @@ const ageVerificationResolvers = {
         
       } catch (error) {
         console.error('Delete age verification error:', error)
-        throw new UserInputError('Failed to delete age verification document')
+        throw new GraphQLError('Failed to delete age verification document', {
+          extensions: { code: 'BAD_USER_INPUT' }
+        })
       }
     }
   },
