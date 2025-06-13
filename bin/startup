@@ -190,6 +190,90 @@ start_specific_service() {
     print_success "Service '$service' started successfully!"
 }
 
+# Function to setup server configuration files
+setup_server() {
+    print_status "Setting up CigarUnderground server configuration..."
+    
+    # Check if running as root or with sudo
+    if [ "$EUID" -ne 0 ]; then
+        print_error "Setup requires sudo privileges. Please run: sudo ./bin/startup --setup"
+        exit 1
+    fi
+    
+    # Create backup directory
+    BACKUP_DIR="/etc/cigarunderground-backup-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$BACKUP_DIR"
+    print_status "Created backup directory: $BACKUP_DIR"
+    
+    # Setup systemd service files
+    print_status "Setting up systemd service files..."
+    
+    # Backup existing files if they exist
+    for service in cigarunderground-admin cigarunderground-api cigarunderground-web; do
+        if [ -f "/etc/systemd/system/${service}.service" ]; then
+            print_warning "Backing up existing ${service}.service"
+            cp "/etc/systemd/system/${service}.service" "$BACKUP_DIR/"
+        fi
+        
+        # Create symlink to our service file
+        print_status "Linking ${service}.service"
+        ln -sf "$PROJECT_ROOT/etc/${service}.service" "/etc/systemd/system/${service}.service"
+    done
+    
+    # Setup nginx configuration
+    print_status "Setting up nginx configuration..."
+    
+    # Create nginx sites directories if they don't exist
+    mkdir -p /etc/nginx/sites-available
+    mkdir -p /etc/nginx/sites-enabled
+    
+    # Backup existing nginx config if it exists
+    if [ -f "/etc/nginx/sites-available/cigarunderground.org.conf" ]; then
+        print_warning "Backing up existing nginx configuration"
+        cp "/etc/nginx/sites-available/cigarunderground.org.conf" "$BACKUP_DIR/"
+    fi
+    
+    # Remove existing symlink if it exists
+    if [ -L "/etc/nginx/sites-enabled/cigarunderground.org.conf" ]; then
+        rm "/etc/nginx/sites-enabled/cigarunderground.org.conf"
+    fi
+    
+    # Create symlinks for nginx configuration
+    print_status "Linking nginx configuration"
+    ln -sf "$PROJECT_ROOT/etc/cigarunderground.org.conf" "/etc/nginx/sites-available/cigarunderground.org.conf"
+    ln -sf "/etc/nginx/sites-available/cigarunderground.org.conf" "/etc/nginx/sites-enabled/cigarunderground.org.conf"
+    
+    # Test nginx configuration
+    print_status "Testing nginx configuration..."
+    if nginx -t; then
+        print_success "Nginx configuration is valid"
+    else
+        print_error "Nginx configuration test failed"
+        print_warning "Please check the configuration and SSL certificate paths"
+    fi
+    
+    # Reload systemd
+    print_status "Reloading systemd daemon..."
+    systemctl daemon-reload
+    
+    # Enable services
+    print_status "Enabling CigarUnderground services..."
+    systemctl enable cigarunderground-web
+    systemctl enable cigarunderground-admin
+    systemctl enable cigarunderground-api
+    
+    print_success "Server setup completed successfully!"
+    print_status "Configuration files linked:"
+    echo "  - Systemd services: /etc/systemd/system/cigarunderground-*.service"
+    echo "  - Nginx config: /etc/nginx/sites-available/cigarunderground.org.conf"
+    echo "  - Backup created: $BACKUP_DIR"
+    echo ""
+    print_status "Next steps:"
+    echo "  1. Place SSL certificates in /etc/ssl/certs/cigarunderground.org/"
+    echo "  2. Reload nginx: sudo systemctl reload nginx"
+    echo "  3. Start services: ./bin/startup --all"
+}
+
 # Function to show help
 show_help() {
     echo "CigarUnderground Startup Script"
@@ -201,6 +285,7 @@ show_help() {
     echo "  --docker      Start all services with Docker"
     echo "  --dev         Start services in development mode (pnpm/npm)"
     echo "  --stop-dev    Stop development services"
+    echo "  --setup       Setup server configuration files (requires sudo)"
     echo "  --help        Show this help message"
     echo ""
     echo "SERVICES (when using specific service):"
@@ -215,6 +300,7 @@ show_help() {
     echo "  $0 --dev                 # Start in development mode"
     echo "  $0 --docker admin        # Start only admin service"
     echo "  $0 --stop-dev            # Stop development services"
+    echo "  sudo $0 --setup          # Setup server configuration"
 }
 
 # Main script logic
@@ -234,6 +320,9 @@ case "${1:-}" in
         ;;
     "--stop-dev")
         stop_dev_services
+        ;;
+    "--setup")
+        setup_server
         ;;
     "--help"|"-h")
         show_help
