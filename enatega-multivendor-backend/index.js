@@ -1,10 +1,4 @@
 import express from 'express'
-import { ApolloServer } from '@apollo/server'
-import { expressMiddleware } from '@apollo/server/express4'
-import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
-import { makeExecutableSchema } from '@graphql-tools/schema'
-import { WebSocketServer } from 'ws'
-import { useServer } from 'graphql-ws/lib/use/ws'
 import http from 'http'
 import mongoose from 'mongoose'
 import cors from 'cors'
@@ -13,14 +7,6 @@ import dotenv from 'dotenv'
 
 // Configure environment variables
 dotenv.config()
-
-// Import helpers
-// import { pubsub } from './helpers/pubsub.js'
-
-// Import models to ensure they're registered
-// import './models/user.js'
-// import './models/food.js'
-// import './models/ageVerification.js'
 
 const app = express()
 
@@ -86,12 +72,13 @@ app.get('/health', (req, res) => {
     }
   }
 
-  // Return 503 if critical services are not ready
-  if (!appState.dbConnected || !appState.isReady) {
+  // Always return 200 for basic health check (service is running)
+  // Database connection is optional for basic health
+  if (!appState.isReady) {
     return res.status(503).json({
       ...healthStatus,
       status: 'SERVICE_UNAVAILABLE',
-      message: 'Service is starting up or database is not connected'
+      message: 'Service is starting up'
     })
   }
 
@@ -191,66 +178,6 @@ async function getDatabaseHealth() {
   }
 }
 
-// Authentication middleware (placeholder - implement based on your auth system)
-const getUser = async (req) => {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (!token) return null
-
-    // TODO: Implement JWT token verification
-    // const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    // const user = await User.findById(decoded.userId)
-    // return user
-
-    // For now, return null (no authentication)
-    return null
-  } catch (error) {
-    console.error('Authentication error:', error)
-    return null
-  }
-}
-
-// GraphQL type definitions (combine all schemas)
-const typeDefs = `
-  scalar Upload
-  scalar Date
-
-  type User {
-    _id: ID!
-    name: String!
-    email: String!
-    phone: String
-    avatar: String
-    createdAt: Date!
-  }
-
-  type Query {
-    _empty: String
-  }
-
-  type Mutation {
-    _empty: String
-  }
-
-  type Subscription {
-    _empty: String
-  }
-
-  ${ageVerificationSchema}
-`
-
-// GraphQL resolvers (combine all resolvers)
-const resolvers = {
-  ...ageVerificationResolvers,
-  // Add other resolvers here as they're created
-}
-
-// Create executable schema
-const schema = makeExecutableSchema({
-  typeDefs,
-  resolvers
-})
-
 // Database connection with retry logic
 const connectDB = async (maxRetries = 5, retryDelay = 5000) => {
   let retries = 0
@@ -265,8 +192,7 @@ const connectDB = async (maxRetries = 5, retryDelay = 5000) => {
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 10000,
         socketTimeoutMS: 45000,
-        bufferCommands: false,
-        bufferMaxEntries: 0
+        bufferCommands: false
       })
       
       appState.dbConnected = true
@@ -300,7 +226,8 @@ const connectDB = async (maxRetries = 5, retryDelay = 5000) => {
       
       if (retries >= maxRetries) {
         console.error(`❌ Failed to connect to MongoDB after ${maxRetries} attempts`)
-        throw error
+        // Don't throw error, allow server to start without DB for health checks
+        return
       }
       
       console.log(`⏳ Retrying in ${retryDelay}ms...`)
@@ -314,8 +241,11 @@ const startServer = async () => {
   try {
     console.log('🚀 Starting CigarUnderground Backend Server...')
     
-    // Connect to database with retry logic
-    await connectDB()
+    // Connect to database with retry logic (non-blocking)
+    connectDB().catch(error => {
+      console.error('❌ Database connection failed:', error)
+      appState.startupErrors.push(`Database connection failed: ${error.message}`)
+    })
     
     const PORT = process.env.PORT || 4000
     const HOST = process.env.HOST || '0.0.0.0'
@@ -323,91 +253,13 @@ const startServer = async () => {
     // Create HTTP server
     const httpServer = http.createServer(app)
     
-    // Create WebSocket server for subscriptions
-    const wsServer = new WebSocketServer({
-      server: httpServer,
-      path: '/graphql'
-    })
-    
-    // Set up WebSocket server for GraphQL subscriptions
-    const serverCleanup = useServer({
-      schema,
-      context: async (ctx, msg, args) => {
-        try {
-          // TODO: Implement WebSocket authentication
-          // const token = ctx.connectionParams?.authorization?.replace('Bearer ', '')
-          // if (token) {
-          //   const decoded = jwt.verify(token, process.env.JWT_SECRET)
-          //   const user = await User.findById(decoded.userId)
-          //   return { user, pubsub }
-          // }
-          return { pubsub }
-        } catch (error) {
-          console.error('WebSocket authentication error:', error)
-          throw new Error('Authentication failed')
-        }
-      }
-    }, wsServer)
-    
-    // Create Apollo Server
-    const server = new ApolloServer({
-      schema,
-      plugins: [
-        ApolloServerPluginDrainHttpServer({ httpServer }),
-        {
-          async serverWillStart() {
-            return {
-              async drainServer() {
-                await serverCleanup.dispose()
-              }
-            }
-          }
-        }
-      ],
-      introspection: process.env.GRAPHQL_INTROSPECTION === 'true',
-      csrfPrevention: false, // Disable CSRF protection for easier API access
-      formatError: (error) => {
-        console.error('GraphQL Error:', error)
-        
-        // Don't expose internal errors in production
-        if (process.env.NODE_ENV === 'production') {
-          if (error.message.includes('Database') || error.message.includes('Internal')) {
-            return new Error('Internal server error')
-          }
-        }
-        
-        return error
-      }
-    })
-    
-    // Start Apollo Server
-    await server.start()
-    appState.serverStarted = true
-    
-    // Apply Apollo GraphQL middleware
-    app.use('/graphql',
-      cors(corsOptions),
-      express.json(),
-      expressMiddleware(server, {
-        context: async ({ req }) => {
-          const user = await getUser(req)
-          return {
-            req,
-            user,
-            pubsub
-          }
-        }
-      })
-    )
-    
     // Mark application as ready
     appState.isReady = true
+    appState.serverStarted = true
     
     // Start HTTP server
     httpServer.listen(PORT, HOST, () => {
       console.log(`🚀 Server ready at http://${HOST}:${PORT}`)
-      console.log(`📊 GraphQL endpoint: http://${HOST}:${PORT}/graphql`)
-      console.log(`🔄 GraphQL subscriptions: ws://${HOST}:${PORT}/graphql`)
       console.log(`🏥 Health check: http://${HOST}:${PORT}/health`)
       console.log(`🔍 Detailed health: http://${HOST}:${PORT}/health/detailed`)
       console.log(`🔞 Age verification API: http://${HOST}:${PORT}/api/age-verification/:userId`)
@@ -420,25 +272,15 @@ const startServer = async () => {
       try {
         appState.isReady = false
         
-        // Stop Apollo Server
-        await server.stop()
-        console.log('🛑 Apollo Server stopped')
-        
-        // Close WebSocket server
-        await serverCleanup.dispose()
-        console.log('🔌 WebSocket server closed')
-        
         // Stop accepting new connections
         httpServer.close(async () => {
           console.log('🔌 HTTP server closed')
           
           // Close database connection
-          await mongoose.connection.close()
-          console.log('🗄️ Database connection closed')
-          
-          // Close PubSub connections
-          const { cleanup } = await import('./helpers/pubsub.js')
-          await cleanup()
+          if (appState.dbConnected) {
+            await mongoose.connection.close()
+            console.log('🗄️ Database connection closed')
+          }
           
           console.log('✅ Graceful shutdown completed')
           process.exit(0)

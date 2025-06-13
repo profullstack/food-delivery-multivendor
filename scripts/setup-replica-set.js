@@ -80,10 +80,10 @@ try {
       console.log('🔄 Setting up initial database...')
       
       // Switch to the application database
-      const db = db.getSiblingDB('cigarunderground')
+      const appDb = db.getSiblingDB('cigarunderground')
       
       // Create a test collection to ensure database exists
-      db.createCollection('_init')
+      appDb.createCollection('_init')
       console.log('✅ Database initialized')
       
       // Create indexes for common queries (optional)

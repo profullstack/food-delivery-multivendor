@@ -8,7 +8,6 @@ services:
       - "27020:27017"
     volumes:
       - mongo1_data:/data/db
-      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - cigarunderground-network
 
@@ -132,10 +131,12 @@ services:
       - mongo3
     volumes:
       - ./scripts/setup-replica-set.js:/setup-replica-set.js:ro
+      - ./scripts/mongo-init.js:/mongo-init.js:ro
     command: >
       bash -c "
         sleep 30 &&
-        mongosh --host mongo1:27017 --file /setup-replica-set.js
+        mongosh --host mongo1:27017 --file /setup-replica-set.js &&
+        mongosh --host mongo1:27017 /mongo-init.js
       "
     restart: "no"
 
