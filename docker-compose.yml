@@ -81,11 +81,10 @@ services:
     networks:
       - cigarunderground-network
     depends_on:
-      - mongo1
-      - mongo2
-      - mongo3
-      - redis
-      - mongo-setup
+      mongo-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]

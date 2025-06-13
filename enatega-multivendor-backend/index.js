@@ -198,6 +198,11 @@ const connectDB = async (maxRetries = 5, retryDelay = 5000) => {
       appState.dbConnected = true
       console.log('✅ MongoDB connected successfully')
       
+      // Clear startup errors once successfully connected
+      appState.startupErrors = appState.startupErrors.filter(error =>
+        !error.includes('MongoDB connection attempt')
+      )
+      
       // Set up database event listeners
       mongoose.connection.on('error', (error) => {
         console.error('❌ MongoDB connection error:', error)
