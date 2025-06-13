@@ -1,0 +1,20 @@
+[Unit]
+Description=CigarUnderground Admin Panel (Docker)
+After=network.target docker.service
+Requires=docker.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=ubuntu
+WorkingDirectory=/home/ubuntu/cigarunderground.org/food-delivery-multivendor
+ExecStart=/usr/bin/docker-compose up -d cigarunderground-admin
+ExecStop=/usr/bin/docker-compose stop cigarunderground-admin
+ExecReload=/usr/bin/docker-compose restart cigarunderground-admin
+TimeoutStartSec=0
+StandardOutput=append:/var/log/cigarunderground-admin.log
+StandardError=append:/var/log/cigarunderground-admin.error.log
+
+[Install]
+WantedBy=multi-user.target

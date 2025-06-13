@@ -1,0 +1,20 @@
+[Unit]
+Description=CigarUnderground API Backend (Docker)
+After=network.target docker.service
+Requires=docker.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=ubuntu
+WorkingDirectory=/home/ubuntu/cigarunderground.org/food-delivery-multivendor
+ExecStart=/usr/bin/docker-compose up -d cigarunderground-backend
+ExecStop=/usr/bin/docker-compose stop cigarunderground-backend
+ExecReload=/usr/bin/docker-compose restart cigarunderground-backend
+TimeoutStartSec=0
+StandardOutput=append:/var/log/cigarunderground-api.log
+StandardError=append:/var/log/cigarunderground-api.error.log
+
+[Install]
+WantedBy=multi-user.target

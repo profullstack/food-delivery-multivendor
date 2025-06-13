@@ -1,0 +1,246 @@
+#!/bin/bash
+
+# CigarUnderground Startup Script
+# Usage: ./bin/startup [--all|--docker|--dev] [service_name]
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Project root directory
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to check if Docker is running
+is_docker_running() {
+    docker info >/dev/null 2>&1
+}
+
+# Function to start Docker services
+start_docker_services() {
+    print_status "Starting Docker services..."
+    
+    if ! command_exists docker; then
+        print_error "Docker is not installed"
+        exit 1
+    fi
+    
+    if ! is_docker_running; then
+        print_error "Docker is not running. Please start Docker first."
+        exit 1
+    fi
+    
+    if ! command_exists docker-compose; then
+        print_error "Docker Compose is not installed"
+        exit 1
+    fi
+    
+    # Start all Docker services
+    print_status "Starting all Docker containers..."
+    docker-compose up -d
+    
+    # Wait for services to be healthy
+    print_status "Waiting for services to be healthy..."
+    sleep 10
+    
+    # Check service status
+    print_status "Checking service status..."
+    docker-compose ps
+    
+    print_success "Docker services started successfully!"
+    print_status "Services available at:"
+    echo "  - Main site: http://localhost:10700"
+    echo "  - Admin Panel: http://localhost:10701"
+    echo "  - API Backend: http://localhost:10702"
+}
+
+# Function to start development services with pnpm
+start_dev_services() {
+    print_status "Starting development services with pnpm..."
+    
+    if ! command_exists pnpm; then
+        print_error "pnpm is not installed. Please install it first: npm install -g pnpm"
+        exit 1
+    fi
+    
+    if ! command_exists npm; then
+        print_error "npm is not installed"
+        exit 1
+    fi
+    
+    # Start MongoDB and Redis with Docker (required dependencies)
+    print_status "Starting database services..."
+    docker-compose up -d mongo1 mongo2 mongo3 redis mongo-setup
+    
+    # Wait for databases to be ready
+    print_status "Waiting for databases to be ready..."
+    sleep 15
+    
+    # Start backend API with npm
+    print_status "Starting backend API..."
+    cd enatega-multivendor-backend
+    if [ ! -d "node_modules" ]; then
+        print_status "Installing backend dependencies..."
+        npm install
+    fi
+    PORT=10702 npm start &
+    BACKEND_PID=$!
+    cd ..
+    
+    # Start admin panel with pnpm
+    print_status "Starting admin panel..."
+    cd enatega-multivendor-admin
+    if [ ! -d "node_modules" ]; then
+        print_status "Installing admin dependencies..."
+        pnpm install
+    fi
+    PORT=10701 pnpm dev &
+    ADMIN_PID=$!
+    cd ..
+    
+    # Create PID file for cleanup
+    echo "$BACKEND_PID $ADMIN_PID" > .dev_pids
+    
+    print_success "Development services started successfully!"
+    print_status "Services available at:"
+    echo "  - Admin Panel: http://localhost:10701"
+    echo "  - API Backend: http://localhost:10702"
+    echo ""
+    print_warning "To stop development services, run: ./bin/startup --stop-dev"
+}
+
+# Function to stop development services
+stop_dev_services() {
+    print_status "Stopping development services..."
+    
+    if [ -f ".dev_pids" ]; then
+        while read -r pid; do
+            if [ -n "$pid" ]; then
+                kill $pid 2>/dev/null || true
+            fi
+        done < .dev_pids
+        rm .dev_pids
+    fi
+    
+    # Stop database containers
+    docker-compose stop mongo1 mongo2 mongo3 redis mongo-setup
+    
+    print_success "Development services stopped!"
+}
+
+# Function to start specific service
+start_specific_service() {
+    local service=$1
+    
+    case $service in
+        "admin"|"admin-panel")
+            print_status "Starting admin panel service..."
+            docker-compose up -d cigarunderground-admin
+            ;;
+        "api"|"backend")
+            print_status "Starting backend API service..."
+            docker-compose up -d cigarunderground-backend
+            ;;
+        "nginx"|"proxy")
+            print_status "Starting nginx proxy..."
+            docker-compose up -d nginx
+            ;;
+        "mongo"|"mongodb"|"database")
+            print_status "Starting MongoDB services..."
+            docker-compose up -d mongo1 mongo2 mongo3 mongo-setup
+            ;;
+        "redis"|"cache")
+            print_status "Starting Redis service..."
+            docker-compose up -d redis
+            ;;
+        *)
+            print_error "Unknown service: $service"
+            print_status "Available services: admin, api, nginx, mongo, redis"
+            exit 1
+            ;;
+    esac
+    
+    print_success "Service '$service' started successfully!"
+}
+
+# Function to show help
+show_help() {
+    echo "CigarUnderground Startup Script"
+    echo ""
+    echo "Usage: $0 [OPTIONS] [SERVICE]"
+    echo ""
+    echo "OPTIONS:"
+    echo "  --all         Start all services with Docker (default)"
+    echo "  --docker      Start all services with Docker"
+    echo "  --dev         Start services in development mode (pnpm/npm)"
+    echo "  --stop-dev    Stop development services"
+    echo "  --help        Show this help message"
+    echo ""
+    echo "SERVICES (when using specific service):"
+    echo "  admin         Admin panel"
+    echo "  api           Backend API"
+    echo "  nginx         Nginx proxy"
+    echo "  mongo         MongoDB database"
+    echo "  redis         Redis cache"
+    echo ""
+    echo "Examples:"
+    echo "  $0 --all                 # Start all Docker services"
+    echo "  $0 --dev                 # Start in development mode"
+    echo "  $0 --docker admin        # Start only admin service"
+    echo "  $0 --stop-dev            # Stop development services"
+}
+
+# Main script logic
+case "${1:-}" in
+    "--all"|"")
+        start_docker_services
+        ;;
+    "--docker")
+        if [ -n "${2:-}" ]; then
+            start_specific_service "$2"
+        else
+            start_docker_services
+        fi
+        ;;
+    "--dev")
+        start_dev_services
+        ;;
+    "--stop-dev")
+        stop_dev_services
+        ;;
+    "--help"|"-h")
+        show_help
+        ;;
+    *)
+        print_error "Unknown option: $1"
+        show_help
+        exit 1
+        ;;
+esac
