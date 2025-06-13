@@ -86,6 +86,7 @@ services:
       - mongo2
       - mongo3
       - redis
+      - mongo-setup
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]
@@ -133,7 +134,7 @@ services:
       - ./scripts/setup-replica-set.js:/setup-replica-set.js:ro
     command: >
       bash -c "
-        sleep 10 &&
+        sleep 30 &&
         mongosh --host mongo1:27017 --file /setup-replica-set.js
       "
     restart: "no"
@@ -144,7 +145,6 @@ services:
     container_name: cigarunderground-nginx
     ports:
       - "10700:80"
-      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
