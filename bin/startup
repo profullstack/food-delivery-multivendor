@@ -86,9 +86,13 @@ start_docker_services() {
     
     print_success "Docker services started successfully!"
     print_status "Services available at:"
-    echo "  - Main site (Nginx): http://localhost:10700"
     echo "  - Admin Panel: http://localhost:10701"
     echo "  - Backend API: http://localhost:10702"
+    echo ""
+    print_status "Production URLs (via host nginx):"
+    echo "  - Main site: https://cigarunderground.org"
+    echo "  - Admin Panel: https://admin.cigarunderground.org"
+    echo "  - Backend API: https://api.cigarunderground.org"
 }
 
 # Function to start development services with pnpm

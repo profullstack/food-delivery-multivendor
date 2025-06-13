@@ -139,21 +139,6 @@ services:
       "
     restart: "no"
 
-  # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: cigarunderground-nginx
-    ports:
-      - "10700:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    networks:
-      - cigarunderground-network
-    depends_on:
-      - cigarunderground-backend
-      - cigarunderground-admin
-    restart: unless-stopped
 
 volumes:
   mongo1_data:
