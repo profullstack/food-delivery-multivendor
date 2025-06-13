@@ -178,21 +178,33 @@ wait_for_docker_health() {
     
     while [ $(date +%s) -lt $timeout_time ]; do
         local unhealthy_services=()
+        local starting_services=()
         
         # Check each service health using docker compose ps
         while IFS= read -r line; do
             if [[ $line == *"(unhealthy)"* ]]; then
                 local service_name=$(echo "$line" | awk '{print $1}')
                 unhealthy_services+=("$service_name")
+            elif [[ $line == *"(health: starting)"* ]]; then
+                local service_name=$(echo "$line" | awk '{print $1}')
+                starting_services+=("$service_name")
             fi
         done < <(docker compose ps --format "table {{.Name}}\t{{.Status}}" | tail -n +2)
         
-        if [ ${#unhealthy_services[@]} -eq 0 ]; then
+        # If no unhealthy services and no starting services, we're good
+        if [ ${#unhealthy_services[@]} -eq 0 ] && [ ${#starting_services[@]} -eq 0 ]; then
             print_success "All Docker services are healthy!"
             return 0
         fi
         
-        print_status "Waiting for services to be healthy: ${unhealthy_services[*]}"
+        # Show status of services still starting up
+        if [ ${#starting_services[@]} -gt 0 ]; then
+            print_status "Services still starting: ${starting_services[*]}"
+        fi
+        if [ ${#unhealthy_services[@]} -gt 0 ]; then
+            print_warning "Unhealthy services: ${unhealthy_services[*]}"
+        fi
+        
         sleep $HEALTH_CHECK_INTERVAL
     done
     
@@ -233,11 +245,16 @@ run_full_test() {
     
     # Test individual service health endpoints
     local health_failed=false
-    for service in web admin api; do
+    for service in web admin; do
         if ! check_service_health "$service" 3; then
             health_failed=true
         fi
     done
+    
+    # Give API more time since it takes longer to start
+    if ! check_service_health "api" 10; then
+        health_failed=true
+    fi
     
     if [ "$health_failed" = true ]; then
         print_error "Some services failed health checks"
