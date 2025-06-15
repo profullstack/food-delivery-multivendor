@@ -1,5 +1,7 @@
 # CigarUnderground.org
 
+[![Crypto Payment](https://paybadge.profullstack.com/badge.svg)](https://paybadge.profullstack.com/?tickers=btc%2Ceth%2Csol%2Cusdc)
+
 ![CigarUnderground Logo](assets/logo-cigar-underground.svg)
 
 ## Premium Cigar Delivery Platform
