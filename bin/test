@@ -367,7 +367,7 @@ show_final_status() {
     echo "  - GraphQL Playground: http://localhost:10702/graphql"
     echo ""
     print_status "Production URLs (if configured):"
-    echo "  - Main Site: https://cigarunderground.org"
+    echo "  - Main Site: https://cigarunderground.pwa.pit.world"
     echo "  - Admin Panel: https://admin.cigarunderground.org"
     echo "  - Backend API: https://api.cigarunderground.org"
 }
