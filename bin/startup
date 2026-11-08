@@ -90,7 +90,7 @@ start_docker_services() {
     echo "  - Backend API: http://localhost:10702"
     echo ""
     print_status "Production URLs (via host nginx):"
-    echo "  - Main site: https://cigarunderground.org"
+    echo "  - Main site: https://cigarunderground.pwa.pit.world"
     echo "  - Admin Panel: https://admin.cigarunderground.org"
     echo "  - Backend API: https://api.cigarunderground.org"
     echo ""

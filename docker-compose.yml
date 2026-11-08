@@ -72,7 +72,7 @@ services:
       MINIMUM_AGE_ALCOHOL: 21
       VERIFICATION_EXPIRY_MONTHS: 24
       MAX_UPLOAD_SIZE_MB: 5
-      CORS_ORIGIN: https://admin.cigarunderground.org,https://cigarunderground.org,http://localhost:3000
+      CORS_ORIGIN: https://admin.cigarunderground.org,https://cigarunderground.pwa.pit.world,http://localhost:3000
       GRAPHQL_PLAYGROUND: true
       GRAPHQL_INTROSPECTION: true
     volumes:
